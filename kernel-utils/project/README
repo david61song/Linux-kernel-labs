@@ -1,0 +1,31 @@
+How to add swap file?
+(https://linuxize.com/post/create-a-linux-swap-file/)
+
+0. boot your virtual machine
+
+1. Create a file that will be used for swap:
+root# fallocate -l 256m /swapfile
+
+## or, if you don't have fallocate, use following command
+root# dd if=/dev/zero of=/swapfile bs=256 count=262144
+
+2. Set the permission type of swap file:
+root# chmod 600 /swapfile
+
+3. Use the mkswap utility to set up the file as linux swap area
+root# mkswp /swapfile
+
+4. Enable the swap with the following command:
+root# swapon /swapfile
+
+4-1. To make the change permanent, open the /etc/fstab file 
+     and append th following line:
+
+# In /etc/fstab
+/swapfile swap swap defaults 0 0
+
+5. To verify that the swap is active, use either `swapon` or the `free`
+   as shown below:
+root# swapon --show
+# or
+root# free -h

@@ -1,0 +1,42 @@
+#!/bin/bash
+
+# Referenced by https://github.com/linux-kernel-labs/linux/tree/master/tools/labs
+# modified for sce394, Ajou
+
+basedir=$(dirname $(readlink -f $0))
+. ${basedir}/config/env.sh
+
+
+if [ -e ${YOCTO_IMAGE} ]; then
+	echo "${YOCTO_IMAGE} is already installed"
+	exit 1
+fi
+
+wget "${YOCTO_URL}/${YOCTO_IMAGE}"
+
+size=$(stat -c%s ${YOCTO_IMAGE})
+if [ $size -lt 4000000000 ]; then
+	e2fsck -f ${YOCTO_IMAGE}
+	resize2fs ${YOCTO_IMAGE} 4G
+	echo "IMAGE size(storage) is grown to 4GB"
+fi
+
+TMP=$(mktemp -d)
+
+sudo mount -t ext4 -o loop ${YOCTO_IMAGE} $TMP
+
+echo -n "Setting hostname: ${hostname}... "
+sudo sh -c "echo '${hostname}' > $TMP/etc/hostname"
+echo "ok"
+
+# add console
+sudo sh -c "echo -n "Adding console... ""
+if [ "$ARCH" = "x86-64" ]; then
+	sudo sh -c "echo "hvc0:12345:respawn:/sbin/getty 115200 hvc0" >> $TMP/etc/inittab"
+else
+	sudo sh -c "echo "mxc0:12345:respawn:/sbin/getty 115200 ttymxc0" >> $TMP/etc/inittab"
+fi
+echo "ok"
+
+sudo umount $TMP
+rmdir $TMP

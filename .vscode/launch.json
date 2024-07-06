@@ -1,0 +1,15 @@
+{
+    "configurations": [
+      {
+        "type": "gdb",
+        "gdbpath": "gdb",
+        "request": "attach",
+        "name": "Attach to Linux Kernel (vmlinux)",
+        "executable": "/home/song/kernel-labs/kernel-utils/src/linux-6.9.7/vmlinux",
+        "target": "localhost:1234",
+        "remote": true,
+        "cwd": "${workspaceRoot}",
+        "valuesFormatting": "parseText"
+      }
+    ]
+  }

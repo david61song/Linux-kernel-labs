@@ -1,0 +1,11 @@
+The repository for IT intensive course oj Ajou University, SCE394
+Linux kenrel programming practices
+
+'kernel_utils' repository references "https://github.com/aweeraman/kernel-utils".
+Practical skeleton codes are developed by UPB, and modified for our course.
+=========================================================================
+
+There are some tools for constructing linux kernel developing environment such
+as create images scripts, boot kernel on qemu script.
+
+In kernel_utils/labs, there are practice codes for this course.
