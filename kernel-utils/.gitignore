@@ -4,7 +4,6 @@ vmlinuz
 initrd/
 rootfs/
 deps/
-src/
 log
 *.o
 *.cmd

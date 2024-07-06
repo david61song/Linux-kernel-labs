@@ -1,0 +1,3 @@
+[submodule "kernel-utils/src/linux-6.9.7"]
+	path = kernel-utils/src/linux-6.9.7
+	url = git@github.com:david61song/linux-kernel-src.git
