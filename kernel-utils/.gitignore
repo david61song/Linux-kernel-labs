@@ -5,6 +5,7 @@ initrd/
 rootfs/
 deps/
 log
+*.ext4
 *.o
 *.cmd
 *.ko
