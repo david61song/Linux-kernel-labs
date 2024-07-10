@@ -1,18 +1,23 @@
+# Lab 8 Makefile
+
 CC = gcc
-OBJS = test_syscall.o
-TARGET = test_syscall
+OBJS = test_syscall.o syscall_example.o gettimeofday.o
 
-all:
-	make test_syscall
+all: test_syscall syscall_example gettimeofday
 
-test_syscall: $(OBJS)
-	$(CC) $(OBJS) -o $(TARGET)
-	@rm -f $(OBJS)
+test_syscall: test_syscall.o
+	$(CC) -o $@ $<
 
-test_syscall.o: test_syscall.c
-	$(CC) -c test_syscall.c
+syscall_example: syscall_example.o
+	$(CC) -o $@ $<
 
+gettimeofday: gettimeofday.o
+	$(CC) -o $@ $<
+
+%.o: %.c
+	$(CC) -c $<
 
 .PHONY: clean
 clean:
-	rm -f $(TARGET)
+	rm -rf *.o
+	rm -f test_syscall syscall_example gettimeofday
