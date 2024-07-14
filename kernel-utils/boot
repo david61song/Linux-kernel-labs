@@ -106,6 +106,8 @@ if test "${copy_modules_to_rootfs}x" = "yx"; then
     )
 fi
 
+sleep 4
+
 if test "${copy_samples_to_rootfs}x" = "yx"; then
     (
       cd ${samplesdir}
