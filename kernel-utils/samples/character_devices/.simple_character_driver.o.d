@@ -1,5 +1,5 @@
 simple_character_driver.o: \
- /home/song/sce-kernel/kernel-utils/samples/character_devices/simple_character_driver.c \
+ /home/song/Linux-kernel-labs/kernel-utils/samples/character_devices/simple_character_driver.c \
  include/linux/compiler-version.h include/linux/kconfig.h \
  include/generated/autoconf.h include/linux/compiler_types.h \
  include/linux/compiler_attributes.h include/linux/compiler-gcc.h \
@@ -62,8 +62,6 @@ simple_character_driver.o: \
  include/linux/byteorder/generic.h arch/x86/include/asm/percpu.h \
  include/asm-generic/percpu.h include/linux/threads.h \
  include/linux/percpu-defs.h arch/x86/include/asm/current.h \
- arch/x86/include/asm/asm-offsets.h include/generated/asm-offsets.h \
- arch/x86/include/asm/GEN-for-each-reg.h \
  arch/x86/include/asm/spinlock_types.h \
  include/asm-generic/qspinlock_types.h \
  include/asm-generic/qrwlock_types.h arch/x86/include/asm/proto.h \

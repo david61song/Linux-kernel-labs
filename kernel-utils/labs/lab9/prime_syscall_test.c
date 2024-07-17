@@ -15,12 +15,9 @@ int main(int argc, char **argv){
     int max = 0;
     int opt;
     int *arr;
-    int res;
-
-    struct timeval start, end;
-
-    srand(time(NULL));
-					//
+    int prime_count;
+    struct timeval start, end, result;
+    long long processing_time;
     while ((opt = getopt(argc, argv, "n:")) != -1) {
         switch (opt) {
             case 'n':
@@ -37,25 +34,25 @@ int main(int argc, char **argv){
         exit(EXIT_FAILURE);
     }
 
-    gettimeofday(&start, NULL); // Start timing
-					//
+    gettimeofday(&start, NULL); 
+    /*****------- Start timing -------*****/
     arr = (int *)malloc(sizeof(int) * max);
     if (arr == NULL) {
         fprintf(stderr, "Memory allocation failed\n");
         exit(EXIT_FAILURE);
     }
     gen_rand_num(arr, max);
-    res = count_prime(arr, max);
-
-    gettimeofday(&end, NULL); // End timing
+    prime_count = count_prime(arr, max);
+    gettimeofday(&end, NULL);
+    /*****------- end timing -------*****/
 
     // Calculate the time taken in microseconds
-    long processing_time = ((end.tv_sec - start.tv_sec) * 1000000L + end.tv_usec) - start.tv_usec;
-
+    timersub(&end, &start, &result);
+    processing_time = result.tv_sec * 1000000 + result.tv_usec;
     // Print the results
     printf("The number of total random numbers: %d\n", max);
-    printf("The number of prime numbers: %d\n", res);
-    printf("Processing time: %ld us\n", processing_time);
+    printf("The number of prime numbers: %d\n", prime_count);
+    printf("Processing time: %lld us\n", processing_time);
 
     free(arr); // Free allocated memory
 

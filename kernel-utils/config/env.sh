@@ -27,7 +27,7 @@ busyboxdir=${depsdir}/busybox
 labdir=labs
 projdir=project
 
-hostname=kernel-lab
+hostname=testkernel
 rootfs_size=2048m
 memory=512m
 
@@ -37,7 +37,7 @@ copy_samples_to_rootfs=n
 
 # Option to compile and copy lab sources to rootfs
 copy_labs_to_rootfs=y
-copy_proj_to_rootfs=y
+copy_proj_to_rootfs=n
 
 debootstrap_arch=amd64
 qemu_arch=x86_64
@@ -51,4 +51,4 @@ wait_for_gdb_at_boot=n
 qemu_debug_args="-s -S"
 
 # Packages to install on rootfs
-packages_to_install="vim sudo bpftrace bpfcc-tools gdb net-tools gcc make"
+packages_to_install="vim sudo gcc make uftrace"

@@ -121,9 +121,12 @@ fi
 if test "${copy_labs_to_rootfs}x" = "yx"; then
     (
       labs=$(ls ${labdir})
+      echo "Removing existing lab sources from rootfs..."
+      sudo rm -rf ${rootfs}/root/labs  # Remove existing labs folder
 
       echo "Copying lab sources to rootfs..."
-      find ${labdir} -type f | xargs --no-run-if-empty sudo cp --parents -t ${rootfs}/root || true
+      sudo mkdir -p ${rootfs}/root/labs  # Create new labs folder
+      sudo cp -R ${labdir}/* ${rootfs}/root/labs/  # Recursively copy all contents
     )
 fi
 

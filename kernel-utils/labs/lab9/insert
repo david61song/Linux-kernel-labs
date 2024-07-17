@@ -1,0 +1,2 @@
+insmod prime_kmod.ko n=100000
+rmmod prime_kmod.ko
