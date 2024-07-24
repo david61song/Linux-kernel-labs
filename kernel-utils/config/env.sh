@@ -32,7 +32,7 @@ rootfs_size=2048m
 memory=512m
 
 # Option to compile and copy kernel modules to rootfs
-copy_modules_to_rootfs=n
+copy_modules_to_rootfs=y
 copy_samples_to_rootfs=n
 
 # Option to compile and copy lab sources to rootfs
@@ -51,4 +51,4 @@ wait_for_gdb_at_boot=n
 qemu_debug_args="-s -S"
 
 # Packages to install on rootfs
-packages_to_install="vim sudo gcc make uftrace"
+packages_to_install="vim sudo gcc make uftrace strace"

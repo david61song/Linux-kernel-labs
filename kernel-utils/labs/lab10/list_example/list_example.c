@@ -57,7 +57,7 @@ static void destroy_list(void)
 
 static int __init list_module_init(void) 
 {
-	/*
+	
 	pid_t pids[10];
 	int j = 0;
 	struct list_head *i, *tmp;
@@ -86,7 +86,7 @@ static int __init list_module_init(void)
 		entry = list_entry(i, struct pid_list, list);
 		printk(KERN_INFO "list traverse, pid:%d\n", entry->pid);
 	}	
-	*/
+
 
 	return 0; 
 }

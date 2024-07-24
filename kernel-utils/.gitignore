@@ -17,4 +17,6 @@ notes/
 *.log
 src/out/
 src/preprocess_build_log.txt
+.idea
+*/.clangd/*
 

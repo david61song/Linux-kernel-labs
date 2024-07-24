@@ -1,7 +1,7 @@
 obj-m := list.o
 
 CONFIG_MODULE_SIG=n
-KDIR := /your/linux/source/path
+KDIR := /home/song/Linux-kernel-labs/kernel-utils/src/linux-6.9.7
 
 PWD := $(shell pwd)
 
