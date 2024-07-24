@@ -154,17 +154,20 @@ static ssize_t list_write(struct file *file, const char __user *buffer,
     strncpy(name, local_buffer + 5, name_size);
     name[name_size] = '\0';
 
-
     /* compare instruction and call function */
     if (strcmp(inst, "addf") == 0) {
         add_to_list(name, 'f');
-    } else if (strcmp(inst, "adde") == 0) {
+    } 
+    else if (strcmp(inst, "adde") == 0) {
         add_to_list(name, 'e');
-    } else if (strcmp(inst, "delf") == 0) {
+    } 
+    else if (strcmp(inst, "delf") == 0) {
         delete_first_from_list(name);
-    } else if (strcmp(inst, "dela") == 0) {
+    } 
+    else if (strcmp(inst, "dela") == 0) {
         delete_all_from_list(name);
-    } else {
+    } 
+    else {
         return -EINVAL;
     }
 
@@ -173,6 +176,7 @@ static ssize_t list_write(struct file *file, const char __user *buffer,
 
 static const struct proc_ops r_pops = {
     .proc_open       = list_read_open,
+    .proc_write      = NULL,
     .proc_read       = seq_read,
     .proc_lseek      = seq_lseek,
     .proc_release    = single_release,
