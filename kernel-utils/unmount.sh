@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set the mount point
-MOUNT_POINT="/home/song/kernel-labs/kernel-utils/rootfs"
+MOUNT_POINT="$(pwd)/rootfs"
 
 # Check if rootfs is mounted
 if mount | grep -q "$MOUNT_POINT"; then
