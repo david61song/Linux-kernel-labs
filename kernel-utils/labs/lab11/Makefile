@@ -1,4 +1,14 @@
 ccflags-y = -Wno-unused-function -Wno-unused-label -Wno-unused-variable
+obj-m = my_cdev.o
 
-obj-m = my_cdev_ta.o
+CONFIG_MODULE_SIG=n
+KDIR := /home/song/Linux-kernel-labs/kernel-utils/src/linux-6.9.7
+PWD := $(shell pwd)
+
+
+all: my_cdev.c
+	$(MAKE) -C $(KDIR) M=$(PWD) modules
+clean:
+	$(MAKE) -C $(KDIR) M=$(PWD) clean
+
 

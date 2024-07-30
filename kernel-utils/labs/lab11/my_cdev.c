@@ -4,30 +4,38 @@
  * All tasks
  *
  * Skeleton developed by UPB, modified for Ajou Univ. SCE394.
+ *
+ * Compeleted by Eunseok Song, (@david61song)
+ *
  */
 
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
-/* TODO: add header files to complete thie module */
+#include <linux/cdev.h>
+/* add header files to complete thie module */
 
 #include "my_cdev.h"
 
-MODULE_DESCRIPTION("SCE394 character device");
-MODULE_AUTHOR("SCE394");
+MODULE_DESCRIPTION("Lab 11 character device implementation");
+MODULE_AUTHOR("Eunseok Song");
 MODULE_LICENSE("GPL");
 
+
+/* Buffer size */
 #ifndef BUFSIZ
 #define BUFSIZ		4096
 #endif
 
+/* Device identification number */
+#define MY_MAJOR 42
+#define MY_MAX_MINORS 5
+
 
 struct my_device_data {
-	/* TODO: add cdev member */
-	/* TODO: add buffer with BUFSIZ elements */
-	/* TODO: add read/write buffer size */
-	/* TODO: add atomic_t access variable to keep track if file is opened */
-	atomic_t access;
+	struct cdev cdev; /* cdev structure data */
+	char device_buffer[BUFSIZ]; /* our device buffer */
+	atomic_t access; /* atomic_t access variable size to track if file is opened */
 };
 
 static size_t my_min(size_t n1, size_t n2) {
@@ -120,7 +128,10 @@ static int __init my_init_module(void)
 	int err;
 	int i;
 
-	/* TODO: register char device region for MY_MAJOR and MY_MAX_MINORS starting at 0 */
+	/* register char device region for MY_MAJOR and MY_MAX_MINORS starting at 0 */
+
+	err = register_chrdev_region((MKDEV(MY_MAJOR), 0), MY_MAX_MINORS, "mydev");
+	
 
 	for (i = 0; i < MY_MAX_MINORS; i++) {
 		/* TODO: init and add cdev to kernel core */
