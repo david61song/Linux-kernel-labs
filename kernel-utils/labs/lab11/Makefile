@@ -1,4 +1,4 @@
-ccflags-y = -Wno-unused-function -Wno-unused-label -Wno-unused-variable
+ccflags-y = -Wno-unused-function -Wno-unused-label -Wno-unused-variable -pg -g -Og
 obj-m = my_cdev.o
 
 CONFIG_MODULE_SIG=n

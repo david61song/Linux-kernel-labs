@@ -148,7 +148,9 @@ echo "Booting kernel: ${bzImage}"
 
 debug_args=""
 if test "${wait_for_gdb_at_boot}y" = "yy"; then
-  echo "Debug mode!"
+  echo "-----------------------------------------------------------"
+  echo "Debug mode Enabled. Attach to vmlinux in your GDB console."
+  echo "-----------------------------------------------------------"
   debug_args=${qemu_debug_args}
 fi
 
