@@ -1,0 +1,24 @@
+Simple character device driver
+================================================================================
+
+* Simple character device driver which has byte buffer and atomic access variable.
+* Each of function my_open, my_release, my_read, my_write, my_ioctl called when 
+  user called system call, open(), close(), read(), write(), ioctl().
+* Insert the kernel module and create a char device by command 'mknod' in /dev.
+
+## Build
+shell> make
+
+## Usage
+shell> insmod my_cdev.ko
+shell> mknod /dev/[your char device name] c 42 0
+
+## Test 
+shell> cat /dev/[your char device name]
+shell> echo "Hi" > /dev/[your char device name]
+
+## Use with system call : write(), open(), read()
+Compile example code(cdev_op.c) and use with system call provided by linux
+
+================================================================================
+

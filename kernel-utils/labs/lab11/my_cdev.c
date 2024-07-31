@@ -55,7 +55,7 @@ static int my_open(struct inode *inode, struct file *file)
 	/* inode->i_cdev contains our cdev struct, use container_of to obtain a pointer to my_device_data */
 	/* The purpose of the container_of macro is to find the starting address of a structure
 	 * when the address of one of its members is known.
-	*/
+	 */
 
 	/* Hints: container_of(ptr, type, member) */
 	my_data = container_of(inode->i_cdev, struct my_device_data, cdev);
