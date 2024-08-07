@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/fcntl.h>
-#include <errno.h>
 #include <string.h>
 #include <sys/ioctl.h>
 
@@ -17,10 +16,15 @@ int main(int argc, char **argv) {
 		return fd;
 	}
 
-	/* TODO: If you need sychronization, add ioctl for locking */
+	/* If you need sychronization, add ioctl for locking */
 	pid = fork();
 
+
+
 	if (pid > 0) {
+
+		ioctl(fd, MY_IOCTL_LOCK, NULL);
+
 		ioctl(fd, MY_IOCTL_INC_0, NULL);
 		ioctl(fd, MY_IOCTL_INC_0, NULL);
 		ioctl(fd, MY_IOCTL_INC_0, NULL);
@@ -52,10 +56,12 @@ int main(int argc, char **argv) {
 		ioctl(fd, MY_IOCTL_SUM, NULL);
 		ioctl(fd, MY_IOCTL_PRINT1, NULL);
 		ioctl(fd, MY_IOCTL_RESET, NULL);
+		ioctl(fd, MY_IOCTL_UNLOCK, NULL);
 
 		/* expected answer is 10 */
 
 	} else if (pid == 0) {
+		ioctl(fd, MY_IOCTL_LOCK, NULL);
 		ioctl(fd, MY_IOCTL_INT, NULL);
 		// /* expected answer is -15 */
 		ioctl(fd, MY_IOCTL_RESET, NULL);
@@ -96,6 +102,7 @@ int main(int argc, char **argv) {
 		ioctl(fd, MY_IOCTL_SUM, NULL);
 		ioctl(fd, MY_IOCTL_PRINT2, NULL);
 		ioctl(fd, MY_IOCTL_RESET, NULL);
+		ioctl(fd, MY_IOCTL_UNLOCK, NULL);
 
 		/* expected answer is 25 */
 		return 0;

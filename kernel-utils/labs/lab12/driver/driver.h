@@ -12,7 +12,8 @@
 #define MY_IOCTL_INC_ALL	_IOC(_IOC_NONE, 'k', 9, 0)
 #define MY_IOCTL_INT		_IOC(_IOC_NONE, 'k', 10, 0)
 #define MY_IOCTL_SUM		_IOC(_IOC_NONE, 'k', 11, 0)
-
 #define MY_IOCTL_RESET		_IOC(_IOC_NONE, 'k', 12, 0)
-/* TODO: if you need synchronization, define new ioctl cmd for lock/unlock */
+/* need synchronization, define new ioctl cmd for lock/unlock */
+#define MY_IOCTL_LOCK       _IOC(_IOC_NONE, 'k', 13, 0) 
+#define MY_IOCTL_UNLOCK     _IOC(_IOC_NONE, 'k', 14, 0)
 #endif

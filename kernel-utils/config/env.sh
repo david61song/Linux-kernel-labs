@@ -47,7 +47,7 @@ kernel_arch=x86_64
 boot_into_initrd_shell=n
 
 # Set this to yes to stop the CPU at boot and wait for debugger
-wait_for_gdb_at_boot=y
+wait_for_gdb_at_boot=n
 qemu_debug_args="-s -S"
 
 # Packages to install on rootfs

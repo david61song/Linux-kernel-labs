@@ -27,6 +27,7 @@
 #include <linux/spinlock.h>
 
 #include "driver.h"
+#include "linux/mutex_types.h"
 
 #define MY_IRQ_NO		11
 
@@ -38,8 +39,7 @@
 
 /* use this lock or more lock variables if you want */
 static spinlock_t lock;
-static struct mutex lock_by_mutex;
-
+static DEFINE_MUTEX(dev_mutex);
 // To raise IRQ, you must modify kernel codes
 // Add the EXPORT_SYMBOL_GPL(vector_irq) after #include definition in arch/x86/kernel/irq.c
 // Add the EXPORT_SYMBOL_GPL(irq_to_desc) after irq_to_desc() in kernel/irq/irqdesc.c
@@ -119,14 +119,13 @@ static int my_release(struct inode *inode, struct file *file)
 }
 
 static ssize_t my_ioctl(struct file *file, unsigned int cmd, unsigned long arg) {
-	struct irq_desc *desc;
 	struct my_device_data *my_data = (struct my_device_data *) file->private_data;
 	int ret = 0;
 	int sum = 0;
 	int i;
 
+
 	/* if you need spinlock or mutex, use them */
-	mutex_lock(&lock_by_mutex);
 	switch (cmd) {
 		case MY_IOCTL_PRINT0:
 			printk(KERN_INFO "IOCTL0, sum: %d\n", my_data->sum);
@@ -160,13 +159,6 @@ static ssize_t my_ioctl(struct file *file, unsigned int cmd, unsigned long arg) 
 			my_data->num[4]++;
 			break;
 		case MY_IOCTL_INT:
-			/* raise interrupt IRQ_NO(11) */
-			desc = irq_to_desc(MY_IRQ_NO);
-			if (!desc) {
-				return -EINVAL;
-			}
-			__this_cpu_write(vector_irq[59], desc);
-
 			asm("int $0x3B");  // Corresponding to irq 11
 			break;
 		case MY_IOCTL_SUM:
@@ -182,10 +174,15 @@ static ssize_t my_ioctl(struct file *file, unsigned int cmd, unsigned long arg) 
 			my_data->num[4] = 0;
 			my_data->sum = 0;
 			break;
+		case MY_IOCTL_LOCK:
+			mutex_lock(&dev_mutex);
+			break;
+		case MY_IOCTL_UNLOCK:
+			mutex_unlock(&dev_mutex);
+			break;
 		default:
 			ret = -EINVAL;
 	}
-	mutex_unlock(&lock_by_mutex);
 	return ret;
 }
 
@@ -208,15 +205,17 @@ static int __init my_driver_init(void)
 {
 	int i;
 	int err;
+	unsigned long flags;
+	struct irq_desc *desc;
 
-
+	printk(KERN_INFO "Inserting module..!");
 	/* Registering characther device to the system */
 	if (register_chrdev_region(MKDEV(MY_MAJOR, 0), MY_MAX_MINORS, DEVICE)) {
 		printk(KERN_INFO "Cannot register the device to the system\n");
 		return -ENODEV;
 	}
 
-	/*Creating cdev structure*/
+	/* Creating cdev structure*/
 	cdev_init(&dev_data.cdev, &fops);
 
 	/*Adding character device to the system*/
@@ -230,18 +229,28 @@ static int __init my_driver_init(void)
 		dev_data.num[i] = 0;
 	dev_data.sum= 0;
 
+
 	/* need to register irq number, handler */
 
-	err = request_irq(MY_IRQ_NO, my_irq_handler, IRQF_SHARED, "my_irq_handler", NULL);
+	err = request_irq(MY_IRQ_NO, my_irq_handler, IRQF_SHARED, "my_irq_handler", &dev_data);
+	/* init lock */
+	spin_lock_init(&lock);
 
 	/* Handling error */
 	if (err < 0){
+		printk(KERN_INFO "IRQ request failed!\n");
 	    return err;
 	}
 
-	/* init lock */
-	spin_lock_init(&lock);
-	mutex_init(&lock_by_mutex);
+	desc = irq_to_desc(MY_IRQ_NO);
+	if (!desc) {
+		return -EINVAL;
+	}
+
+	spin_lock_irqsave(&lock, flags);
+	__this_cpu_write(vector_irq[59], desc);
+	spin_unlock_irqrestore(&lock, flags);
+
 
 	printk(KERN_INFO "Device Driver Insert...Done!!!\n");
 	return 0;
