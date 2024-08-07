@@ -1,7 +1,7 @@
 obj-m = driver.o
 
 CONFIG_MODULE_SIG=n
-KDIR := ../../../src/linux-5.15.4/
+KDIR := /home/song/linux_src_dir/
 
 PWD := $(shell pwd)
 

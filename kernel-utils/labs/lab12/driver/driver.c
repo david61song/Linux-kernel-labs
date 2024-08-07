@@ -1,16 +1,17 @@
 /***************************************************************************//**
- *  \file       driver.c
+ *  \file		driver.c
  *
- *  \details    Interrupt Example
+ *  \details		Interrupt Example
  *
- *  \author     EmbeTronicX
+ *  \author		EmbeTronicX
  *
- *  \modifier	Eunseok Song
+ *  \modified by	Eunseok Song
  *
  *******************************************************************************/
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/module.h>
+#include <linux/mutex.h>
 // #include <linux/kdev_t.h>
 #include <linux/fs.h>
 #include <linux/cdev.h>
@@ -27,7 +28,7 @@
 
 #include "driver.h"
 
-#define IRQ_NO		11
+#define MY_IRQ_NO		11
 
 #define MY_MAJOR	42
 #define MY_MAX_MINORS	1
@@ -35,10 +36,11 @@
 #define DEVICE		"mycdev"
 
 
-/* TODO: use this lock or more lock variables you want */
+/* use this lock or more lock variables if you want */
 static spinlock_t lock;
+static struct mutex lock_by_mutex;
 
-// TODO: To raise IRQ, you must modify kernel codes
+// To raise IRQ, you must modify kernel codes
 // Add the EXPORT_SYMBOL_GPL(vector_irq) after #include definition in arch/x86/kernel/irq.c
 // Add the EXPORT_SYMBOL_GPL(irq_to_desc) after irq_to_desc() in kernel/irq/irqdesc.c
 // After then, we need to rebuild the linux source: make -j$(nproc)
@@ -64,6 +66,8 @@ static ssize_t my_write(struct file *file,
 		const char *buf, size_t len, loff_t * off);
 static ssize_t my_ioctl(struct file *file, 
 		unsigned int cmd, unsigned long arg);
+/************ End of Driver Fuctions *******************/
+
 
 static struct file_operations fops =
 {
@@ -75,11 +79,16 @@ static struct file_operations fops =
 	.unlocked_ioctl = my_ioctl
 };
 
-//Interrupt handler for IRQ 11. 
-static irqreturn_t irq_handler(int irq, void *dev_id) {
+/* Interrupt handler for IRQ 11 
+ * This Procedure runs with interrupt context, use spinlock 
+ */
+static irqreturn_t my_irq_handler(int irq, void *dev_id) {
 	int i = 0;
 
-	/* TODO: if you need lock, implement */
+	/* For preventing race condition by multiple runner, use spinlock */
+	/* Do not use blocking methods lock! */
+
+	spin_lock(&lock);
 	dev_data.num[0] = -1;
 	dev_data.num[1] = -2;
 	dev_data.num[2] = -3;
@@ -87,6 +96,7 @@ static irqreturn_t irq_handler(int irq, void *dev_id) {
 	dev_data.num[4] = -5;
 	for (i = 0; i < 5; i ++)
 		dev_data.sum += dev_data.num[i];
+	spin_unlock(&lock);
 
 	printk(KERN_INFO "IRQ, sum: %d\n", dev_data.sum);
 
@@ -115,7 +125,8 @@ static ssize_t my_ioctl(struct file *file, unsigned int cmd, unsigned long arg) 
 	int sum = 0;
 	int i;
 
-	/* TODO: if you need spinlock or mutex, use them */
+	/* if you need spinlock or mutex, use them */
+	mutex_lock(&lock_by_mutex);
 	switch (cmd) {
 		case MY_IOCTL_PRINT0:
 			printk(KERN_INFO "IOCTL0, sum: %d\n", my_data->sum);
@@ -150,7 +161,7 @@ static ssize_t my_ioctl(struct file *file, unsigned int cmd, unsigned long arg) 
 			break;
 		case MY_IOCTL_INT:
 			/* raise interrupt IRQ_NO(11) */
-			desc = irq_to_desc(IRQ_NO);
+			desc = irq_to_desc(MY_IRQ_NO);
 			if (!desc) {
 				return -EINVAL;
 			}
@@ -174,6 +185,7 @@ static ssize_t my_ioctl(struct file *file, unsigned int cmd, unsigned long arg) 
 		default:
 			ret = -EINVAL;
 	}
+	mutex_unlock(&lock_by_mutex);
 	return ret;
 }
 
@@ -181,6 +193,7 @@ static ssize_t my_read(struct file *file,
 		char __user *buf, size_t size, loff_t *off)
 {
 	printk(KERN_INFO "Read function\n");
+
 	return size;
 }
 
@@ -194,6 +207,9 @@ static ssize_t my_write(struct file *file,
 static int __init my_driver_init(void)
 {
 	int i;
+	int err;
+
+
 	/* Registering characther device to the system */
 	if (register_chrdev_region(MKDEV(MY_MAJOR, 0), MY_MAX_MINORS, DEVICE)) {
 		printk(KERN_INFO "Cannot register the device to the system\n");
@@ -204,7 +220,7 @@ static int __init my_driver_init(void)
 	cdev_init(&dev_data.cdev, &fops);
 
 	/*Adding character device to the system*/
-	if ((cdev_add(&dev_data.cdev, MKDEV(MY_MAJOR, 0) ,1)) < 0){
+	if ((cdev_add(&dev_data.cdev, MKDEV(MY_MAJOR, 0), 1)) < 0){
 		printk(KERN_INFO "Cannot add the device to the system\n");
 		return -EBUSY;
 	}
@@ -212,12 +228,20 @@ static int __init my_driver_init(void)
 	/* initialize attributes of struct my_device_data */
 	for (i = 0; i < 5; i ++)
 		dev_data.num[i] = 0;
-
 	dev_data.sum= 0;
 
-	/* TODO: you need to register irq number, handler */
-	/* TODO: init lock */
+	/* need to register irq number, handler */
 
+	err = request_irq(MY_IRQ_NO, my_irq_handler, IRQF_SHARED, "my_irq_handler", NULL);
+
+	/* Handling error */
+	if (err < 0){
+	    return err;
+	}
+
+	/* init lock */
+	spin_lock_init(&lock);
+	mutex_init(&lock_by_mutex);
 
 	printk(KERN_INFO "Device Driver Insert...Done!!!\n");
 	return 0;
@@ -225,7 +249,8 @@ static int __init my_driver_init(void)
 
 static void __exit my_driver_exit(void)
 {
-	/* TODO: you need to free irq, handler */
+	/* need to free irq, handler */
+	free_irq(MY_IRQ_NO, NULL);
 	cdev_del(&dev_data.cdev);
 	unregister_chrdev_region(MKDEV(MY_MAJOR, 0), MY_MAX_MINORS);
 	printk(KERN_INFO "Device Driver Remove...Done!!!\n");
