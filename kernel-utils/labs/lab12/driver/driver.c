@@ -5,7 +5,7 @@
  *
  *  \author     EmbeTronicX
  *
- *  \modifier   Jonghyeon Kim
+ *  \modifier	Eunseok Song
  *
  *******************************************************************************/
 #include <linux/kernel.h>
@@ -235,6 +235,6 @@ module_init(my_driver_init);
 module_exit(my_driver_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_AUTHOR("Your name <your@email>");
-MODULE_DESCRIPTION("A simple device driver - Interrupts");
-MODULE_VERSION("1.9");
+MODULE_AUTHOR("Eunseok Song <david61song@gmail.com>");
+MODULE_DESCRIPTION("A simple device driver - for practicing Interrupts");
+MODULE_VERSION("1.0");
