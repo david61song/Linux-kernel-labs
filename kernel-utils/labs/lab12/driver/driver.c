@@ -251,7 +251,6 @@ static int __init my_driver_init(void)
 	__this_cpu_write(vector_irq[59], desc);
 	spin_unlock_irqrestore(&lock, flags);
 
-
 	printk(KERN_INFO "Device Driver Insert...Done!!!\n");
 	return 0;
 }

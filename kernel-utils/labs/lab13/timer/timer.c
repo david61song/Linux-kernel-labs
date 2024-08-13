@@ -1,7 +1,8 @@
 /*
  * Deferred Work
- *
  * Exercise #1, #2: simple timer
+ * Modified by Eunseok Song
+ * Simple kernel timer prints message every TIMER_TIMEOUT
  */
 
 #include <linux/kernel.h>
@@ -10,27 +11,30 @@
 #include <linux/sched.h>
 
 MODULE_DESCRIPTION("Simple kernel timer");
-MODULE_AUTHOR("SCE394");
+MODULE_AUTHOR("david61song <david61song@gmail.com>");
 MODULE_LICENSE("GPL");
 
-#define TIMER_TIMEOUT	1
+#define TIMER_TIMEOUT 1
 
 static struct timer_list timer;
 
 static void timer_handler(struct timer_list *tl)
 {
-	/* TODO 1: print a message(printk or pr_info) */
+	/* print a message(printk or pr_info) */
+	printk(KERN_INFO "%d seconds elapsed...!", TIMER_TIMEOUT);
 
-	/* TODO 2: rechedule timer */
+	/* reschedule timer */
+	mod_timer(&timer, jiffies + TIMER_TIMEOUT * HZ);
 }
 
 static int __init timer_init(void)
 {
 	pr_info("[timer_init] Init module\n");
 
-	/* TODO 1: initialize timer */
-
-	/* TODO 1: schedule timer for the first time */
+	/* initialize timer */
+	timer_setup(&timer, timer_handler, 0);
+	/* schedule timer for the first time */
+	mod_timer(&timer, jiffies + TIMER_TIMEOUT * HZ);
 
 	return 0;
 }
@@ -39,7 +43,8 @@ static void __exit timer_exit(void)
 {
 	pr_info("[timer_exit] Exit module\n");
 
-	/* TODO 1: cleanup; make sure the timer is not running after we exit */
+	/* Must stop timer */
+	del_timer(&timer);
 }
 
 module_init(timer_init);
