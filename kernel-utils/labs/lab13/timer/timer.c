@@ -20,11 +20,18 @@ static struct timer_list timer;
 
 static void timer_handler(struct timer_list *tl)
 {
-	/* print a message(printk or pr_info) */
-	printk(KERN_INFO "%d seconds elapsed...!", TIMER_TIMEOUT);
+    /* Check if we are in interrupt context */
+    if (in_interrupt()) {
+        printk(KERN_INFO "Timer handler is running in interrupt context\n");
+    } else {
+        printk(KERN_INFO "Timer handler is running in process context\n");
+    }
 
-	/* reschedule timer */
-	mod_timer(&timer, jiffies + TIMER_TIMEOUT * HZ);
+    /* print a message */
+    printk(KERN_INFO "%d seconds elapsed...!", TIMER_TIMEOUT);
+
+    /* reschedule timer */
+    mod_timer(&timer, jiffies + TIMER_TIMEOUT * HZ);
 }
 
 static int __init timer_init(void)

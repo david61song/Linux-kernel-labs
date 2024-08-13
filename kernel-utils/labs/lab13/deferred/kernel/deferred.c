@@ -1,9 +1,9 @@
 /*
- * SCE394 - Lab 13 - Deferred Work
+ * Lab 13 - Deferred Work
  *
  * Exercises #3, #4, #5: deferred work
  *
- * Code skeleton.
+ * Modified by Eunseok Song
  */
 
 #include <linux/kernel.h>
@@ -16,6 +16,10 @@
 #include <linux/uaccess.h>
 #include <linux/sched/task.h>
 #include "../include/deferred.h"
+#include "linux/jiffies.h"
+#include "linux/libata.h"
+#include "linux/spinlock.h"
+#include "linux/types.h"
 
 #define MY_MAJOR		42
 #define MY_MINOR		0
@@ -27,8 +31,9 @@
 #define TIMER_TYPE_MON		2
 
 MODULE_DESCRIPTION("Deferred work character device");
-MODULE_AUTHOR("SCE394");
+MODULE_AUTHOR("david61song <david61song@gmail.com>");
 MODULE_LICENSE("GPL");
+
 
 struct mon_proc {
 	struct task_struct *task;
@@ -37,13 +42,18 @@ struct mon_proc {
 
 static struct my_device_data {
 	struct cdev cdev;
-	/* TODO 1: add timer */
-	/* TODO 2: add flag */
-	/* TODO 3: add work */
-	/* TODO 4: add list for monitored processes */
-	/* TODO 4: add spinlock to protect list */
+	struct timer_list timer; 			/* timer */
+	int flag;							/* flag of timer type */
+	struct work_struct io_work;			/* io_alloc work */
+	struct work_struct monitor_work;	/* mointor work */
+	struct list_head process_list;		/* list for monitored processes */
+	spinlock_t lock; 					/* spinlock to protect list */
 } dev;
 
+
+/* This function simulate long time processing. Don't process it in
+ * interrupt context, process it workqueue.
+ */
 static void alloc_io(void)
 {
 	set_current_state(TASK_INTERRUPTIBLE);
@@ -51,6 +61,9 @@ static void alloc_io(void)
 	pr_info("Yawn! I've been sleeping for 5 seconds.\n");
 }
 
+/* This function malloc'ing to kernel memory space. 
+ * Need to free'ing after done to use!
+ */
 static struct mon_proc *get_proc(pid_t pid)
 {
 	struct task_struct *task;
@@ -73,21 +86,44 @@ static struct mon_proc *get_proc(pid_t pid)
 }
 
 
-/* TODO 3: define work handler for alloc_io() */
+/* define work handler for alloc_io() */
+static void io_work_handler (struct work_struct *work){
+	alloc_io();
+}
 
-#define ALLOC_IO_DIRECT
-/* TODO 3: undef ALLOC_IO_DIRECT*/
+static void monitor_work_handler (struct work_struct *work) {
+    struct mon_proc *proc_ptr, *tmp;
+
+    spin_lock(&dev.lock);
+    list_for_each_entry_safe(proc_ptr, tmp, &dev.process_list, list) {
+        if (proc_ptr->task->__state == TASK_DEAD || proc_ptr->task->exit_state) {
+            pr_info("===== task %s(%d) is dead!!! ===== \n", proc_ptr->task->comm, proc_ptr->task->pid);
+            /* Decrement the task usage counter */
+            put_task_struct(proc_ptr->task);
+            /* Remove the process from the list */
+            list_del(&proc_ptr->list);
+            /* Free the memory allocated for the mon_proc struct */
+            kfree(proc_ptr);
+        }
+    }
+    spin_unlock(&dev.lock);
+}
 
 static void timer_handler(struct timer_list *tl)
 {
-	/* TODO 1: implement timer handler */
-	/* TODO 2: check flags: TIMER_TYPE_SET or TIMER_TYPE_ALLOC */
-		/* TODO 3: schedule work */
-		/* TODO 4: iterate the list and check the proccess state */
-			/* TODO 4: if task is dead print info ... */
-			/* TODO 4: ... decrement task usage counter ... */
-			/* TODO 4: ... remove it from the list ... */
-			/* TODO 4: ... free the struct mon_proc */
+    printk(KERN_INFO "[timer_handler] pid = %d, comm = %s", current->pid, current->comm);
+
+	if (dev.flag == TIMER_TYPE_SET) {
+		mod_timer(&dev.timer, jiffies + (1) * HZ);
+	}
+	else if (dev.flag == TIMER_TYPE_ALLOC){
+		schedule_work(&dev.io_work);
+	}
+	else if (dev.flag == TIMER_TYPE_MON){
+		schedule_work(&dev.monitor_work);
+		mod_timer(&dev.timer, jiffies + (1) * HZ);
+	}
+
 }
 
 static int deferred_open(struct inode *inode, struct file *file)
@@ -108,26 +144,43 @@ static int deferred_release(struct inode *inode, struct file *file)
 static long deferred_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	struct my_device_data *my_data = (struct my_device_data*) file->private_data;
+	struct mon_proc *proc_ptr;
 
 	pr_info("[deferred_ioctl] Command: %s\n", ioctl_command_to_string(cmd));
 
 	switch (cmd) {
 		case MY_IOCTL_TIMER_SET:
-			/* TODO 2: set flag */
-			/* TODO 1: schedule timer */
+			/* set timer to run after <seconds> seconds */
+			/* set flag and schedule timer */
+			my_data->flag = TIMER_TYPE_SET;
+			mod_timer(&my_data->timer, jiffies + (arg) * HZ);
 			break;
 		case MY_IOCTL_TIMER_CANCEL:
-			/* TODO 1: cancel timer */
+			/* cancel timer (delete timer)*/
+			del_timer(&my_data->timer);
 			break;
-		case MY_IOCTL_TIMER_ALLOC: // invoke alloc_io()
-			/* TODO 2: set flag and schedule timer */
+		/* allocate memory after <seconds> seconds */
+		case MY_IOCTL_TIMER_ALLOC: 
+			/* invoke alloc_io() */
+			/* set flag and schedule timer */
+			my_data->flag = TIMER_TYPE_ALLOC;
+			mod_timer(&my_data->timer, jiffies + arg * HZ);
 			break;
-		case MY_IOCTL_TIMER_MON:
+		/* monitor pid */
+		case MY_IOCTL_TIMER_MON: //monitor
 		{
-			/* TODO 4: use get_proc() and add task to list */
-			/* TODO 4: protect access to list */
+			/* use get_proc() and add task to list. PROCTECT THE LIST! */
+			proc_ptr = get_proc(arg);
+			if (proc_ptr == NULL)
+				return -ENOTTY;
 
-			/* TODO 4: set flag and schedule timer */
+			spin_lock(&my_data->lock);
+			list_add(&proc_ptr->list, &my_data->process_list);
+			spin_unlock(&my_data->lock);
+
+			/* set flag and scheduler timer */
+			my_data->flag = TIMER_TYPE_MON;
+			mod_timer(&my_data->timer, jiffies + (1) * HZ);
 			break;
 		}
 		default:
@@ -154,35 +207,51 @@ static int deferred_init(void)
 		return err;
 	}
 
-	/* TODO 2: Initialize flag. */
-	/* TODO 3: Initialize work. */
+	/* Initialize flag. */
+	dev.flag = TIMER_TYPE_NONE;
+	/* Initialize work. */
 
-	/* TODO 4: Initialize lock and list. */
+	INIT_WORK(&dev.io_work, io_work_handler);
+	INIT_WORK(&dev.monitor_work, monitor_work_handler);
+
+	/* Initialize lock and list. */
+	spin_lock_init(&dev.lock);
+	INIT_LIST_HEAD(&dev.process_list);
 
 	cdev_init(&dev.cdev, &my_fops);
 	cdev_add(&dev.cdev, MKDEV(MY_MAJOR, MY_MINOR), 1);
 
-	/* TODO 1: Initialize timer. */
+	/* Initialize timer. */
+	// Acknowledge the kernel that we will use this timer
+	timer_setup(&dev.timer, timer_handler, 0);
 
 	return 0;
 }
 
 static void deferred_exit(void)
 {
-	struct mon_proc *p, *n;
+    struct mon_proc *p, *n;
 
-	pr_info("[deferred_exit] Exit module\n" );
-
-	cdev_del(&dev.cdev);
-	unregister_chrdev_region(MKDEV(MY_MAJOR, MY_MINOR), 1);
-
-	/* TODO 1: Cleanup: make sure the timer is not running after exiting. */
-	/* TODO 3: Cleanup: make sure the work handler is not scheduled. */
-
-	/* TODO 4: Cleanup the monitered process list */
-		/* TODO 4: ... decrement task usage counter ... */
-		/* TODO 4: ... remove it from the list ... */
-		/* TODO 4: ... free the struct mon_proc */
+    pr_info("[deferred_exit] Exit module\n");
+	// delete char device 
+    cdev_del(&dev.cdev);
+    unregister_chrdev_region(MKDEV(MY_MAJOR, MY_MINOR), 1);
+    // Cleanup make sure the timer is not running after exiting. 
+    del_timer_sync(&dev.timer);
+    // Cleanup: make sure the work handler is not scheduled.
+    flush_work(&dev.io_work);
+    flush_work(&dev.monitor_work);
+    // Cleanup the monitored process list
+    spin_lock(&dev.lock);
+    list_for_each_entry_safe(p, n, &dev.process_list, list) {
+        // decrement task usage counter
+        put_task_struct(p->task);
+        // remove it from the list
+        list_del(&p->list);
+        // free the struct mon_proc 
+        kfree(p);
+    }
+    spin_unlock(&dev.lock);
 }
 
 module_init(deferred_init);
