@@ -1,8 +1,8 @@
 /*
- * SCE394 - Lab 14 - Memory Mapping
- *
- * Code skeleton.
+ * Lab 14 - Memory Mapping
+ * Modified by eunseok song
  */
+
 
 #include <linux/version.h>
 #include <linux/init.h>
@@ -24,7 +24,7 @@
 #define MAX_PAGES		16
 
 MODULE_DESCRIPTION("Simple mmap driver");
-MODULE_AUTHOR("SCE394");
+MODULE_AUTHOR("david61song");
 MODULE_LICENSE("GPL");
 
 static struct my_device_data {
@@ -42,7 +42,7 @@ static int mymmap_open(struct inode *inode, struct file *file)
 {
 	struct my_device_data *my_data =
 		container_of(inode->i_cdev, struct my_device_data, cdev);
-	file->private_data = my_data;
+	file->private_data = my_data; // store my_data
 	pr_info("[mymmap_open] Device opened\n");
 	return 0;
 }
@@ -64,13 +64,20 @@ static ssize_t mymmap_read(struct file *file, char __user *user_buffer,
 #elif defined(USE_ALLOC_PAGES)
 	buf = page_area;
 #endif
-	pr_info("[mymmap_read] current %s\n", buf);
+	pr_info("[mymmap_read] current: %s\n", buf);
 	return 0;
 }
 
+/* vm_area_struct contains information about logically (virtually) contiguous memory region 
+* This struct (vm_area_struct) describes a virtual memory area. There is one of these
+* per VM-area/task. A VM area is any part of the process virtual memory
+* space that has a special rule for the page-fault handlers (ie a shared
+* library, the executable area etc).
+*/
+
 static int mymmap_mmap(struct file *file, struct vm_area_struct *vma)
 {
-	struct my_device_data *my_data = (struct my_device_data*) file->private_data;
+	struct my_device_data *my_data = (struct my_device_data *) file->private_data;
 	unsigned long len;
 	unsigned long pfn;
 	unsigned long start;
@@ -79,28 +86,38 @@ static int mymmap_mmap(struct file *file, struct vm_area_struct *vma)
 	int i;
 	int ret;
 
-	char *vmalloc_area_ptr;
-
-	pr_info("[mymmap_mmap] mmap() is called\n");
+	pr_info("[mymmap_mmap] mmap() is called!\n");
 
 	if (my_data->size == 0)
 		return -ENOMEM;
+	/* Calculate required size of memory allocating */
+	len = (vma->vm_end) - (vma->vm_start);
 
-	/* TODO: Calculate required size of memory allocating */
+	/* Check that the device has sufficient space */
+	if (len > my_data->size)
+		return -EINVAL;
 
-	/* TODO: Check that the device has sufficient space */
-
-	/* TODO: Check the mmap() require whether zero byte or not */
+	/* Check the mmap() require whether zero byte or not (what?)*/
 
 #if defined(USE_KMALLOC)
-	/* TODO 1-2: Convert virtual address to physical address */
-	/* TODO 1-3: Remapping pfn into vm_area_struct */
+	/* Convert virtual address to physical address */
+	pfn = virt_to_phys((void *)kmalloc_area)>>PAGE_SHIFT;
+	/* Remapping pfn into vm_area_struct */
+	if(remap_pfn_range(vma, vma->vm_start, pfn, len, vma->vm_page_prot))
+		return -EAGAIN;
 #elif defined(USE_VMALLOC)
-	/* TODO 2-3: Convert virtual address to page frame number */
-	/* TODO 2-3: Remapping pfns into vm_area_struct */
+	/* Convert virtual address to page frame number */
+	pfn = vmalloc_to_pfn(vmalloc_area);
+	/* Remapping pfns into vm_area_struct */
+	if(remap_pfn_range(vma, vma->vm_start, pfn, len, vma->vm_page_prot))
+		return -EAGAIN;
+
 #elif defined(USE_ALLOC_PAGES)
-	/* TODO 3-3: Convert page(or page_area) to page frame number */
-	/* TODO 3-4: Remapping pfn into vm_area_struct */
+	/*  Convert page(or page_area) to page frame number */
+	pfn = page_to_pfn(page);
+	/* Remapping pfn into vm_area_struct */
+	if(remap_pfn_range(vma, vma->vm_start, pfn, len, vma->vm_page_prot))
+		return -EAGAIN;
 #endif
 	return 0;
 }
@@ -118,7 +135,6 @@ static int mymmap_init(void)
 {
 	int err;
 	int order = 0;
-	int max_pages;
 	int i;
 
 	pr_info("[mymmap_init] Init module\n");
@@ -133,23 +149,38 @@ static int mymmap_init(void)
 
 	/* Allocate memory by MAX_PAGES */
 #if defined(USE_KMALLOC)
-	/* TODO 1-1: Allocate contiguous memory by using kmalloc(), kmalloc_area */
-
+	/* Allocate contiguous memory by using kmalloc(), kmalloc_area */
+	kmalloc_area = kmalloc(MAX_PAGES * PAGE_SIZE, GFP_ATOMIC);
 	pr_info("[mymmap_init] used kmalloc()");
+	if (kmalloc_area == NULL)
+		return -EINVAL;
+	area = kmalloc_area;
 #elif defined(USE_VMALLOC)
-	/* TODO 2-1: Allocate virtually contiguous memory by using vmalloc(), vmalloc_area */
-
+	/* Allocate virtually contiguous memory by using vmalloc(), vmalloc_area */
+	vmalloc_area = vmalloc(MAX_PAGES * PAGE_SIZE);
 	pr_info("[mymmap_init] used vmalloc()");
+	if (vmalloc_area == NULL)
+		return -EINVAL;
+	area = vmalloc_area;
 #elif defined(USE_ALLOC_PAGES)
-	/* TODO 3-1: Allocate page by using alloc_pages(), page */
-
-	/* TODO 3-2: Convert page to virtural address with page_area */
-
+	/* Allocate page by using alloc_pages(), page
+	* alloc_pages(mask, order) allocates 2 order pages and returns an 
+	* instance of struct page which represents the first page of the 
+	* reserved block. To allocate only one page, the order should be 0.
+	*/
+	 page = alloc_pages(GFP_ATOMIC, 4);
+	 if (page == NULL)
+	 	return -EINVAL;
+	/* Convert page to virtural address with page_area */
+	page_area = page_address(page);
 	pr_info("[mymmap_init] used alloc_pages()");
+	area = page_area;
 #endif
 
+/* PAGE_SIZE would be set to proper size in kernel src dir */
+
 #if defined(USE_KMALLOC) || defined(USE_VMALLOC) || defined(USE_ALLOC_PAGES)
-	for (i = 0; i < MAX_PAGES * PAGE_SIZE; i += PAGE_SIZE) {
+	for (i = 0; i < MAX_PAGES * PAGE_SIZE ; i += PAGE_SIZE) {
 		area[i]     = 0xfa;
 		area[i + 1] = 0xce;
 		area[i + 2] = 0xb0;
@@ -171,7 +202,7 @@ static int mymmap_init(void)
 	dev.size = 0;
 #endif
 
-
+	pr_info("[mymmap_init] Insert kernel module and memory initialize success!\n");
 	return 0;
 }
 

@@ -1,9 +1,9 @@
 /*
- * SCE394 - Memory Mapping Lab (#14)
+ * Memory Mapping Lab (#14)
  *
  * memory mapping between user-space and kernel-space
  *
- * test case
+ * test case program
  */
 
 #include <stdio.h>
@@ -16,19 +16,28 @@
 #include <assert.h>
 #include <string.h>
 
-#define NPAGES		16
-#define MMAP_DEV	"/dev/mymmap"
+#define NPAGES			16
+#define MMAP_DEV		"/dev/mymmap"
+#define TEST_STR_SIZE	128
 
 /* PAGE_SIZE = getpagesize() */
 
 int test_write_read(int fd, unsigned char *mmap_addr)
 {
 	int i;
-	printf("\nWrite/Read test ...\n");
+	printf("\n>>>>Write/Read test..\n");
+	char *test_string = "Welcome to mmap() world!";
+	char read_string[TEST_STR_SIZE];
 
-	/* TODO: write to device mmap'ed address */
+	/* write to device mmap'ed address */
+	memcpy(mmap_addr, test_string, strlen(test_string));
 
-	/* TODO: call mymap_read() */
+	/* call mymap_read() */
+
+	read(fd, read_string, TEST_STR_SIZE - 1);
+
+	/*gurantee Null-terminated string*/
+	read_string[TEST_STR_SIZE - 1] = '\0';
 
 	return 0;
 }
@@ -46,11 +55,22 @@ int main(int argc, const char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	/* TODO: call mmap() system call with R/W permission to address */
+	printf("Device successfully opened. start test.. \n");
 
-	/* TODO: check the values by module init */
+	/* call mmap() system call with R/W permission to address */
 
-	/* TODO: call test_write_read() */
+	addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+
+	/* check the values by module init */
+
+	if (addr == NULL){
+		perror("mmap");
+		exit(EXIT_FAILURE);
+	}
+
+	/* call test_write_read() */
+
+	test_write_read(fd, addr);
 
 	close(fd);
 

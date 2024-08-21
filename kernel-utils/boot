@@ -173,9 +173,10 @@ fi
 
 sudo ${qemu} \
         -kernel ${bzImage} \
-        -append "rw console=ttyS0,115200 root=/dev/sda nokaslr" \
+        -append "rw console=tty0 console=ttyS0,115200 root=/dev/sda nokaslr" \
         -drive file=${rootimg},format=raw \
         -nographic \
+	-serial mon:stdio \
         -m ${memory} \
         -pidfile ${pidfile} \
         ${debug_args} \
