@@ -1,11 +1,3 @@
-/*
- * Memory Mapping Lab (#14)
- *
- * memory mapping between user-space and kernel-space
- *
- * test case program
- */
-
 #include <stdio.h>
 #include <unistd.h>
 #include <sys/mman.h>
@@ -16,63 +8,65 @@
 #include <assert.h>
 #include <string.h>
 
-#define NPAGES			16
-#define MMAP_DEV		"/dev/mymmap"
-#define TEST_STR_SIZE	128
+#define NPAGES          16
+#define MMAP_DEV        "/dev/mymmap"
+#define TEST_STR_SIZE   16 * 4096
 
-/* PAGE_SIZE = getpagesize() */
-
-int test_write_read(int fd, unsigned char *mmap_addr)
+int test_write_read(int fd, unsigned char *mmap_addr, size_t mmap_size)
 {
-	int i;
-	printf("\n>>>>Write/Read test..\n");
-	char *test_string = "Welcome to mmap() world!";
-	char read_string[TEST_STR_SIZE];
+    int pgsize = getpagesize();
+    printf("\n>>>>Write/Read test..\n");
+    char *test_string = "Welcome to mmap() world!";
+    char read_string[TEST_STR_SIZE];
 
-	/* write to device mmap'ed address */
-	memcpy(mmap_addr, test_string, strlen(test_string));
+    /* write to device mmap'ed address */
+	/* write each page */
+    for (int i = 0; i < mmap_size; i += pgsize) {
+        memcpy(mmap_addr + i, test_string, strlen(test_string));
+    }
 
-	/* call mymap_read() */
+    /* call mymap_read() */
+    ssize_t bytes_read = read(fd, read_string, TEST_STR_SIZE - 1);
+    if (bytes_read < 0) {
+        perror("read");
+        return -1;
+    }
 
-	read(fd, read_string, TEST_STR_SIZE - 1);
-
-	/*gurantee Null-terminated string*/
-	read_string[TEST_STR_SIZE - 1] = '\0';
-
-	return 0;
+    return 0;
 }
 
 int main(int argc, const char **argv)
 {
-	int fd;
-	unsigned char *addr;
-	int len = NPAGES * getpagesize();
-	int i;
+    int fd;
+    unsigned char *addr;
+    size_t len = NPAGES * getpagesize();
 
-	fd = open(MMAP_DEV, O_RDWR | O_SYNC);
-	if (fd < 0) {
-		perror("open");
-		exit(EXIT_FAILURE);
-	}
+    fd = open(MMAP_DEV, O_RDWR | O_SYNC);
+    if (fd < 0) {
+        perror("open");
+        exit(EXIT_FAILURE);
+    }
 
-	printf("Device successfully opened. start test.. \n");
+    printf("Device successfully opened. start test.. \n");
 
-	/* call mmap() system call with R/W permission to address */
+    /* call mmap() system call with R/W permission to address */
+    addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (addr == MAP_FAILED) {
+        perror("mmap");
+        close(fd);
+        exit(EXIT_FAILURE);
+    }
 
-	addr = mmap(NULL, len, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    /* call test_write_read() */
+    if (test_write_read(fd, addr, len) < 0) {
+        printf("Test write/read failed\n");
+    }
 
-	/* check the values by module init */
+    /* Unmap the memory */
+    if (munmap(addr, len) < 0) {
+        perror("munmap");
+    }
 
-	if (addr == NULL){
-		perror("mmap");
-		exit(EXIT_FAILURE);
-	}
-
-	/* call test_write_read() */
-
-	test_write_read(fd, addr);
-
-	close(fd);
-
-	return 0;
+    close(fd);
+    return 0;
 }

@@ -3,6 +3,7 @@
  * Modified by eunseok song
  */
 
+#define USE_KMALLOC
 
 #include <linux/version.h>
 #include <linux/init.h>
@@ -97,26 +98,33 @@ static int mymmap_mmap(struct file *file, struct vm_area_struct *vma)
 	if (len > my_data->size)
 		return -EINVAL;
 
-	/* Check the mmap() require whether zero byte or not (what?)*/
+	nr_pages = len / PAGE_SIZE;
+
 
 #if defined(USE_KMALLOC)
 	/* Convert virtual address to physical address */
 	pfn = virt_to_phys((void *)kmalloc_area)>>PAGE_SHIFT;
 	/* Remapping pfn into vm_area_struct */
-	if(remap_pfn_range(vma, vma->vm_start, pfn, len, vma->vm_page_prot))
+	if (remap_pfn_range(vma, vma->vm_start, pfn, len, vma->vm_page_prot))
 		return -EAGAIN;
 #elif defined(USE_VMALLOC)
-	/* Convert virtual address to page frame number */
-	pfn = vmalloc_to_pfn(vmalloc_area);
+	/* that memory allocated with vmalloc() is not physically contiguous so
+	* if we want to map a range alocated with vmalloc(), we have to map each 
+	* page individually and compute the physical address for each page.
+	*/
 	/* Remapping pfns into vm_area_struct */
-	if(remap_pfn_range(vma, vma->vm_start, pfn, len, vma->vm_page_prot))
-		return -EAGAIN;
+	for (i = 0; i < nr_pages * PAGE_SIZE; i += PAGE_SIZE) {
+	/* Convert virtual address to page frame number */
+		pfn = vmalloc_to_pfn(vmalloc_area + i);
+		if (remap_pfn_range(vma, vma->vm_start + i, pfn, PAGE_SIZE, vma->vm_page_prot))
+			return -EAGAIN;
+	}
 
 #elif defined(USE_ALLOC_PAGES)
 	/*  Convert page(or page_area) to page frame number */
 	pfn = page_to_pfn(page);
 	/* Remapping pfn into vm_area_struct */
-	if(remap_pfn_range(vma, vma->vm_start, pfn, len, vma->vm_page_prot))
+	if (remap_pfn_range(vma, vma->vm_start, pfn, len, vma->vm_page_prot))
 		return -EAGAIN;
 #endif
 	return 0;
